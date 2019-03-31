@@ -1,2 +1,2 @@
 # DB_VECTOR
-Database related programms for NEC AURORA TSUBASA Vector engine.
+Database related programms and tests for NEC AURORA TSUBASA Vector engine.
