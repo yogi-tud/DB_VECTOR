@@ -12,4 +12,9 @@
 #include <sstream>
 #include "comp.h"
 
+int main()
+{
+
+    return 0;
+}
 
