@@ -66,7 +66,7 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
    
       
 
-	vhcall_handle h = vhcall_install("/home/fett/code/vh_lib.so");
+	vhcall_handle h = vhcall_install("vh_lib.so");
 	if (h == (vhcall_handle)-1) {
 		fprintf(stderr, "vhcall_install failed\n");
 		exit(1);
@@ -91,6 +91,8 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
 	sr.addr = randoms;
 	sr.size = sizeof(randoms);
 	sr.result = malloc(sizeof(randoms));
+	sr.idata.push_back(1);
+	sr.test=11;
 	
 	long endsetup= getTimestamp();	
 	long setup = endsetup -start;

@@ -2,7 +2,10 @@
 // Created by johannes on 14.05.19.
 //
 
-#ifndef DB_VECTOR_COMP_H
-#define DB_VECTOR_COMP_H
 
-#endif //DB_VECTOR_COMP_H
+#include <vector>
+using namespace std;
+
+vector<uint64_t> compressV(vector<uint64_t> input, uint8_t mask,int o);
+vector<uint64_t> compressAll(vector<uint64_t> input, vector<uint8_t> masking);
+

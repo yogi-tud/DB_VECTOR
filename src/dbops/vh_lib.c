@@ -59,6 +59,9 @@ generateInts(void *hdl, void *ip, size_t isize, void *op, size_t osize)
 	printf("received buffer on VH. size: %i\n", isize/4);
 	uint32_t * output = (uint32_t*) vh_buffer;
 	int limit = data->size/4;
+
+	//printf("TESTING DATA HANDOVER, DATA OF 1. element: %i \n",data->idata[0]);
+
 	
 	printf("DATA ELEMENTS AT VE: %i \n",limit);
 	
