@@ -1,4 +1,3 @@
-#include <vector>
 
 struct sendrecv_data {
 	void *addr;

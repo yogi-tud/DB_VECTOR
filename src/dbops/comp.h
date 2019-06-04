@@ -3,9 +3,8 @@
 //
 
 
-#include <vector>
-using namespace std;
 
-vector<uint64_t> compressV(vector<uint64_t> input, uint8_t mask,int o);
-vector<uint64_t> compressAll(vector<uint64_t> input, vector<uint8_t> masking);
 
+
+int compressV(uint64_t *input, uint64_t *&out, uint8_t masking, int size);
+int compressAll(uint64_t *input, uint64_t *&out, uint8_t * masking, int size);

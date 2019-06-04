@@ -26,12 +26,22 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <libvhcall.h>
+//#include <libvhcall.h>
 #include <omp.h>
 #include "vh_lib.h"
 #include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <libvhcall.h>
+#ifdef __cplusplus
+}
+#endif
+
+
+
 
 
 //function to get the current time in miliseconds
@@ -66,15 +76,15 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
    
       
 
-	vhcall_handle h = vhcall_install("vh_lib.so");
+	vhcall_handle h = vhcall_install("./vh_lib.so");
 	if (h == (vhcall_handle)-1) {
-		fprintf(stderr, "vhcall_install failed\n");
+        perror("vhcall_install");
 		exit(1);
 	}
 	
 	symid2 = vhcall_find(h, "generateInts");
 	if (symid2 == -1) {
-		fprintf(stderr, "vhcall_find 2 failed\n");
+        perror("vhcall_args_alloc");
 		exit(1);
 	}
 	
@@ -91,8 +101,8 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
 	sr.addr = randoms;
 	sr.size = sizeof(randoms);
 	sr.result = malloc(sizeof(randoms));
-	sr.idata.push_back(1);
-	sr.test=11;
+	//sr.idata.push_back(1);
+	//sr.test=11;
 	
 	long endsetup= getTimestamp();	
 	long setup = endsetup -start;
@@ -108,6 +118,8 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
 	random_number_time = getTimestamp() -endsetup;
 	printf("Time for creating random array of ints: %i ms \n",random_number_time);
    long starts = getTimestamp();
+
+   //do selection
 	for( int i = 0; i < datasize; ++i ) {
       result[ i ] = ( erg[ i ] < upper ) & ( erg[ i ] > lower ) ;
    }

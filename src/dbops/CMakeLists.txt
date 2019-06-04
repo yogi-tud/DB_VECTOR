@@ -10,7 +10,7 @@ add_compile_options(-mavx512cd)
 add_compile_options(-mavx512f)
 add_compile_options(-mavx512vl)
 
-set(SOURCE_FILES comp.cpp thread.h)
+set(SOURCE_FILES comp.cpp thread.h veo.c veo_lib.c)
 
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(simple_example ${SOURCE_FILES})

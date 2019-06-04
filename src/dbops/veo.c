@@ -36,7 +36,7 @@ int main()
     cout<<"time to create random ints: "<<duration_cast<milliseconds>(randomIntGenerationTime).count()<<" ms"<<endl;
 
 
-  /* Load "veo_lib" on VE node 0 */
+
   struct veo_proc_handle *proc = veo_proc_create_static(0, "./veo_lib");
   uint64_t handle = NULL;/* find a function in the executable */
   struct veo_thr_ctxt *ctx = veo_context_open(proc);
