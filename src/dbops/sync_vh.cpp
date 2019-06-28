@@ -107,17 +107,19 @@ int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int s
 
 extern "C" {
 
-uint64_t compress( const uint64_t * in,  veos_handle *handle)
+uint64_t compress(uint64_t * in,  veos_handle *handle)
 {
     Parent p;
-    //p.showMessage(message);
 
-        cout<<res[255]<<" ";
+        //print INPUT from VE
+        for(int i =0;i<256;i++)
+        {
+            cout<<in[i]<<" ";
+        }
 
     cout<<endl;
-    //TODO REPLACE WITH VH INPUT
+    //TODO Replace selhits with VE INPUT via veos_handle
 
-    uint64_t* input = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
     uint64_t* selhits = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
     uint64_t* result= (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
 
@@ -137,10 +139,6 @@ uint64_t compress( const uint64_t * in,  veos_handle *handle)
 //INPUT: numbers [256] array of slection input data, which must be compressed
 
 
-    for(int i=0;i<256;i++)
-    {
-        input[i]=i;
-    }
 
     uint8_t masks[32];
     for(int i=0;i<32;i++)
@@ -152,7 +150,7 @@ uint64_t compress( const uint64_t * in,  veos_handle *handle)
 
     uint64_t* startpointer = result;
 
-    int count= Parent::compressAll(input,result, masks, 32);
+    int count= Parent::compressAll(in,result, masks, 32);
 
     //compressV(input,result,masks[0],1);
 
