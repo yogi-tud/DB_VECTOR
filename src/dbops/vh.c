@@ -64,7 +64,7 @@ long selection_time;
 
 //VH function handles, used to access lib functions.
 int64_t symid2 = -1;
-int datasize =200000000; //Number of elements to be randomly generated
+int datasize =200; //Number of elements to be randomly generated
 uint32_t randoms[datasize];
 uint32_t lower=5000;
 uint32_t upper=10000;

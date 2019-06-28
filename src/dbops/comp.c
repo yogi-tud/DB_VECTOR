@@ -51,7 +51,7 @@ int main() {
 
     __mmask8 masktest = createMask(maskin);
 
-    printf("MASK EQUI TEST: %i \n",(uint8_t) masktest);
+    printf("\n MASK EQUI GENERATION TEST: %i \n",(uint8_t) masktest);
 
     //compressV(in,26,0);
 
