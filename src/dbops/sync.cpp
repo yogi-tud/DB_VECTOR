@@ -7,7 +7,6 @@
 #include <libvhcall.h>
 #include <stdio.h>
 #include <iostream>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,7 +75,7 @@ int main() {
 
 #pragma _NEC nofuse
     for( uint32_t i = 0; i < datasize; ++i ) {
-        result[ i ] = ( data[ i ] < upper ) & ( data[ i ] > lower ) ;
+        result[ i] = ( data[ i ] < upper ) & ( data[ i ] > lower ) ;
     }
 
 
@@ -109,10 +108,11 @@ int main() {
     handle = vhcall_install("./sync_vh.so");
     symid  = vhcall_find(handle, "compress");
     ca = vhcall_args_alloc();   //argument object for vhcall function arguments
-    vhcall_args_set_veoshandle(ca, 0);  //set veos handle as argument
-    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 0, (uint64_t *)data, size);  //set Select input data as function argument
-    //vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 0, (uint64_t *)result, size2); //2. buffer. breaks vhcall
+    vhcall_args_set_veoshandle(ca, 2);  //set veos handle as argument
+    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 0, (uint64_t *)data, size2);  //set Select input data as function argument
+    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 1, (uint64_t *)result, size2); //2. buffer. breaks vhcall
     vhcall_invoke_with_args(symid, ca, &retval);    //call VH function with arguments
+
     vhcall_args_free(ca);
     return 0;
 }

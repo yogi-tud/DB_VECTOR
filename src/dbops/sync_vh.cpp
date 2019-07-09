@@ -11,6 +11,7 @@
 #include <array>
 #include "libvepseudo.h"
 
+
 using namespace std;
 class Parent
 {
@@ -107,49 +108,52 @@ int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int s
 
 extern "C" {
 
-uint64_t compress(uint64_t * in,  veos_handle *handle)
+uint64_t compress(uint64_t * in, uint64_t * res,  veos_handle *handle)
 {
     Parent p;
 
+    cout<<res<<endl;
+    cout<<in<<endl;
+    cout<<endl<<"test in:";
         //print INPUT from VE
         for(int i =0;i<256;i++)
         {
             cout<<in[i]<<" ";
         }
+        cout<<endl<<"test hit:";
+
+    for(int i =0;i<256;i++)
+    {
+        cout<<res[i]<<" ";
+    }
+
+
 
     cout<<endl;
-    //TODO Replace selhits with VE INPUT via veos_handle
 
+    //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
     uint64_t* selhits = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
+    memcpy( selhits, res, 256*sizeof(uint64_t));
     uint64_t* result= (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
 
 
-    uint64_t* maskin = (uint64_t*)aligned_alloc(64,8*sizeof(uint64_t *));
-    for(int i=0;i<8;i++)
-    {
-        maskin[i]=0;
-    }
-    maskin[0]=1;
-    maskin[3]=1;
-
-    __mmask8 masktest = Parent::createMask(maskin);
-
-    printf("\n MASK EQUI GENERATION TEST: %i \n",(uint8_t) masktest);
 //INPUT: result array [256] conatinian 1/0 to indicate hit/miss of selection
 //INPUT: numbers [256] array of slection input data, which must be compressed
 
 
 
-    uint8_t masks[32];
+    uint8_t masks[32]= {0};
+    //calculate masks from input (selection hits)
     for(int i=0;i<32;i++)
     {
-        masks[i]=0;
+        masks[i]=Parent::createMask(&selhits[i*8]);
+        cout<<"mask: "<<(unsigned int) masks[i]<<endl;
     }
-    masks[0]=255;
-    masks[31]=129;
+
 
     uint64_t* startpointer = result;
 
+    //Do compress on all input
     int count= Parent::compressAll(in,result, masks, 32);
 
     //compressV(input,result,masks[0],1);
@@ -160,6 +164,9 @@ uint64_t compress(uint64_t * in,  veos_handle *handle)
 
     }
     cout<<endl;
+
+    //SET input pointer to result array!
+    in = startpointer;
 
     return 0;
 }
