@@ -90,19 +90,10 @@ uint32_t result[datasize]; //holds all result information. 1 if hit, 0 if miss. 
 	
 	printf("vhcall prepared\n\n");
 	//struct for managing data transfers
-	struct sendrecv_data sr;
+
 	
 	
-	//Size of the buffer to copy is: size of randoms in byte (*4) + size of struct sr (32 bytes)
-	long long buffersize = ((long long) datasize)*4 +32;
-	float mbyte = ((float)datasize*4)/(1024.0*1024.0);
-	printf( "buffersize: %lli  elements: %i  %f MBs\n",buffersize,datasize,mbyte);
-	int * obuff;
-	sr.addr = randoms;
-	sr.size = sizeof(randoms);
-	sr.result = malloc(sizeof(randoms));
-	//sr.idata.push_back(1);
-	//sr.test=11;
+
 	
 	long endsetup= getTimestamp();	
 	long setup = endsetup -start;

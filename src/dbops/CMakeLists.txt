@@ -10,7 +10,7 @@ add_compile_options(-mavx512cd)
 add_compile_options(-mavx512f)
 add_compile_options(-mavx512vl)
 
-set(SOURCE_FILES comp.c thread.h sync.cpp sync.h sync_vh.cpp)
+set(SOURCE_FILES comp.c thread.h)
 
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(simple_example ${SOURCE_FILES})

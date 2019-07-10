@@ -12,14 +12,17 @@
 #include "libvepseudo.h"
 
 
+
 using namespace std;
 class Parent
 {
 public:
    void showMessage(const char* message);
-   static int compressV(uint64_t *input, uint64_t *&out, uint8_t masking, int size);
+   static int compressV(uint64_t *input, uint64_t *&out, uint8_t masking);
    static int compressAll(uint64_t *input, uint64_t *&out, uint8_t * masking, int size);
    static __mmask8 createMask(uint64_t* maskin);
+
+
 
 };
 
@@ -53,7 +56,14 @@ void Parent::showMessage(const char* message)
     std::cout << "[message]" << message << std::endl;
 }
 
-int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking, int size)
+/***
+ * @brief this function performs a single AVX compress instruction on input data
+ * @param input pointer to 8 input values for compress
+ * @param out pointer to write result of compress back to
+ * @param masking a mask with 8 bits
+ * @return popcount of a single compress run
+ */
+int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
 {
 
     __mmask8 mask = masking;
@@ -86,7 +96,14 @@ int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking, int size
     return count;
 
 }
-
+/***
+ * @brief this function performs size times runs of avx compress and counts the total number of result values
+ * @param input in buffer with selection input values. must be divisable by 8
+ * @param out address of the output buffer. compress results will be written here
+ * @param masking masks for performance avx compress. number of masks must equal size parameter
+ * @param size number of compress runs to be performed. each run uses 8 input values and 1 mask
+ * @return popcount of all compress runs in total
+ */
 int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int size)
 {
     int count=0;
@@ -97,7 +114,7 @@ int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int s
             continue;
         }
 
-        count += Parent::compressV(input, out, masking[i],1);
+        count += Parent::compressV(input, out, masking[i]);
         input += 8;
 
     }
@@ -107,8 +124,14 @@ int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int s
 }
 
 extern "C" {
-
-uint64_t compress(uint64_t * in, uint64_t * res,  veos_handle *handle)
+/***
+ * @brief performs avx compress on input data on VH. After the calculation, the result is written back to the VE.
+ * @param handle veos handle to access veos features
+ * @param in buffer with 256 selection input values
+ * @param res buffer with 256 selection results {0,1}
+ * @return total popcount of compress
+ */
+uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
 {
     Parent p;
 
@@ -134,41 +157,36 @@ uint64_t compress(uint64_t * in, uint64_t * res,  veos_handle *handle)
     //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
     uint64_t* selhits = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
     memcpy( selhits, res, 256*sizeof(uint64_t));
-    uint64_t* result= (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
-
-
-//INPUT: result array [256] conatinian 1/0 to indicate hit/miss of selection
-//INPUT: numbers [256] array of slection input data, which must be compressed
+    uint64_t* result= (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));   //buffer of compress results
 
 
 
     uint8_t masks[32]= {0};
-    //calculate masks from input (selection hits)
+    //calculate masks for avx instructions from input (selection hits)
     for(int i=0;i<32;i++)
     {
         masks[i]=Parent::createMask(&selhits[i*8]);
         cout<<"mask: "<<(unsigned int) masks[i]<<endl;
     }
 
-
+    //set startpointer to check result and cpy back to VE
     uint64_t* startpointer = result;
 
-    //Do compress on all input
-    int count= Parent::compressAll(in,result, masks, 32);
 
-    //compressV(input,result,masks[0],1);
+    int count= Parent::compressAll(in,result, masks, 32);  //Do compress on all input
 
-    cout<< "result: "<<endl;
+
+
+    cout<< "[VH] result: "<<endl;
     for(int i=0; i<count;i++){
         cout<<startpointer[i]<<" ";
 
     }
     cout<<endl;
 
-    //SET input pointer to result array!
-    in = startpointer;
+    memcpy( res, startpointer, 256*sizeof(uint64_t)); //copy back result to result input buffer
 
-    return 0;
+    return (uint64_t) count;  //return number of compressed values in result buffer
 }
 
 }

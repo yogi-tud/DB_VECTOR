@@ -63,7 +63,7 @@ int main() {
     bool *r2;
 
     random_number_time = getTimestamp() -start;
-    printf("Time for creating random array of ints: %i ms \n",random_number_time);
+    printf("[VE] Time for creating random array of ints: %i ms \n",random_number_time);
 
     start= getTimestamp();
 
@@ -92,7 +92,7 @@ int main() {
     }
     float phit = (float)hits / (float)datasize;
 
-    printf("hits: %i  percentage of hits: %f %%\nTime needed for selection: %i ms \n",hits,100*phit, dif);
+    printf("[VE] hits: %i  percentage of hits: %f %%\nTime needed for selection: %i ms \n",hits,100*phit, dif);
 
 
     //SET UP VHCALL API
@@ -103,17 +103,37 @@ int main() {
 
 
 
+
+
     size_t size=256*sizeof(uint64_t);
-    size_t size2=256*sizeof(uint64_t);
-    handle = vhcall_install("./sync_vh.so");
-    symid  = vhcall_find(handle, "compress");
+
+
+    handle = vhcall_install("./sync_vh.so");    //load shared lib
+    symid  = vhcall_find(handle, "compress");   //load compress function
+
     ca = vhcall_args_alloc();   //argument object for vhcall function arguments
-    vhcall_args_set_veoshandle(ca, 2);  //set veos handle as argument
-    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 0, (uint64_t *)data, size2);  //set Select input data as function argument
-    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 1, (uint64_t *)result, size2); //2. buffer. breaks vhcall
+    vhcall_args_set_veoshandle(ca, 0);  //set veos handle as argument
+    vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 1, (uint64_t *)data, size);  //set Select input data as function argument
+    vhcall_args_set_pointer(ca,  VHCALL_INTENT_INOUT, 2, (uint64_t *)result, size); //set select result data as function argument
+
+
+
+    start= getTimestamp();
+
     vhcall_invoke_with_args(symid, ca, &retval);    //call VH function with arguments
 
+    random_number_time = getTimestamp() -start;
+    printf("[VE] Time for doing compress: %i ms \n",random_number_time);
+
+    std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
+    std::cout<<"[VE] RETURNED COMRPESS DATA: "<<std::endl;
+    for(int i=0;i<retval;i++){
+
+        std::cout<<result[i]<<" ";
+    }
+    std::cout<<std::endl;
     vhcall_args_free(ca);
+
     return 0;
 }
 
