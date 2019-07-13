@@ -53,7 +53,7 @@ __mmask8 Parent::createMask(uint64_t* maskin)
 
 void Parent::showMessage(const char* message)
 {
-    std::cout << "[message]" << message << std::endl;
+    cout << "[message]" << message << std::endl;
 }
 
 /***
@@ -63,7 +63,7 @@ void Parent::showMessage(const char* message)
  * @param masking a mask with 8 bits
  * @return popcount of a single compress run
  */
-int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
+int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
 {
 
     __mmask8 mask = masking;
@@ -73,9 +73,14 @@ int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
     __m512i t2;
 
     //copy input data into AVX data object with offset
+    uint64_t* ain = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
+    memcpy( ain, input, 8*sizeof(uint64_t));
+
     t2= _mm512_load_epi64(input);
 
+
     _mm512_mask_compressstoreu_epi64( out, mask, t2 );
+
 
     int count = __builtin_popcount(mask);
     //write back the compress data into the result vector
@@ -104,21 +109,25 @@ int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
  * @param size number of compress runs to be performed. each run uses 8 input values and 1 mask
  * @return popcount of all compress runs in total
  */
-int Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int size)
+int  Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int size)
 {
-    int count=0;
-    for(int i=0;i<size;i++)
-    {
-        if(__builtin_popcount(masking[i])==0)
-        {   input+=8;
-            continue;
+    int count = 0;
+
+
+//#pragma omp parallel num_threads(1)
+   // {
+//#pragma  omp for ordered schedule(dynamic)
+        for (int i = 0; i < size; i++) {
+            if (__builtin_popcount(masking[i]) == 0) {
+                input += 8;
+                continue;
+            }
+
+            count += Parent::compressV(input, out, masking[i]);
+            input += 8;
+
         }
-
-        count += Parent::compressV(input, out, masking[i]);
-        input += 8;
-
-    }
-
+  //  }
     return count;
 
 }
@@ -135,15 +144,13 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
 {
     Parent p;
 
-    cout<<res<<endl;
-    cout<<in<<endl;
-    cout<<endl<<"test in:";
+
         //print INPUT from VE
         for(int i =0;i<256;i++)
         {
             cout<<in[i]<<" ";
         }
-        cout<<endl<<"test hit:";
+
 
     for(int i =0;i<256;i++)
     {
@@ -155,9 +162,9 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
     cout<<endl;
 
     //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
-    uint64_t* selhits = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
+    alignas(64) uint64_t selhits[256];
     memcpy( selhits, res, 256*sizeof(uint64_t));
-    uint64_t* result= (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));   //buffer of compress results
+    uint64_t* result= (uint64_t *) aligned_alloc(64,256*sizeof(uint64_t *));   //buffer of compress results
 
 
 
@@ -171,9 +178,12 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
 
     //set startpointer to check result and cpy back to VE
     uint64_t* startpointer = result;
+    alignas(64) uint64_t ain[256];
+    memcpy( ain, in, 256*sizeof(uint64_t));
 
+    cout<<"align of ainput in OUTSIDE: "<<alignof((ain))<<endl;
 
-    int count= Parent::compressAll(in,result, masks, 32);  //Do compress on all input
+    int count= Parent::compressAll(ain,result, masks, 32);  //Do compress on all input
 
 
 
