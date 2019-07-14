@@ -15,13 +15,13 @@ extern vhcall_args* vhcall_args_alloc(void);
 }
 #endif
 
-//function to get the current time in miliseconds
+//function to get the current time in nano
 static inline long getTimestamp(){
     struct timespec ts;
     timespec_get(&ts, TIME_UTC);
     // timestap is additive from 2 components: current time in nanoseconds + current time in seconds since epoch
     //tv_nsec only counts between 0 and 0,99 seconds. Therefore a timestampt needs to use tv_sec and tv_nsec
-    return ts.tv_nsec/1000000 + ts.tv_sec*1000;
+    return ts.tv_nsec/1000 + ts.tv_sec*1000000;
 }
 
 int main() {
@@ -63,7 +63,7 @@ int main() {
     bool *r2;
 
     random_number_time = getTimestamp() -start;
-    printf("[VE] Time for creating random array of ints: %i ms \n",random_number_time);
+    printf("[VE] Time for creating random array of ints: %i qs \n",random_number_time);
 
     start= getTimestamp();
 
@@ -92,7 +92,7 @@ int main() {
     }
     float phit = (float)hits / (float)datasize;
 
-    printf("[VE] hits: %i  percentage of hits: %f %%\nTime needed for selection: %i ms \n",hits,100*phit, dif);
+    printf("[VE] hits: %i  percentage of hits: %f %%\nTime needed for selection: %i qs \n",hits,100*phit, dif);
 
 
     //SET UP VHCALL API
@@ -123,7 +123,7 @@ int main() {
     vhcall_invoke_with_args(symid, ca, &retval);    //call VH function with arguments
 
     random_number_time = getTimestamp() -start;
-    printf("[VE] Time for doing compress: %i ms \n",random_number_time);
+    std::cout<<"[VE] Time for doing compress:  "<<random_number_time<<" qs"<<std::endl;
 
     std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
     std::cout<<"[VE] RETURNED COMRPESS DATA: "<<std::endl;
