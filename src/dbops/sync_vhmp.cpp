@@ -1,4 +1,8 @@
 //
+// Created by johannes on 18.07.19.
+//
+
+//
 // Created by johannes on 28.06.19.
 //
 
@@ -19,10 +23,10 @@ using namespace std;
 class Parent
 {
 public:
-   void showMessage(const char* message);
-   static int compressV(uint64_t *input, uint64_t *&out, uint8_t masking);
-   static int compressAll(uint64_t *input, uint64_t *&out, uint8_t * masking, int size);
-   static __mmask8 createMask(uint64_t* maskin);
+    void showMessage(const char* message);
+    static int compressV(uint64_t *input, uint64_t *&out, uint8_t masking);
+    static int compressAll(uint64_t *input, uint64_t *&out, uint8_t * masking, int size);
+    static __mmask8 createMask(uint64_t* maskin);
 
 
 
@@ -65,11 +69,11 @@ void Parent::showMessage(const char* message)
  * @param masking a mask with 8 bits
  * @return popcount of a single compress run
  */
-int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
+int   Parent::compressV(uint64_t *input,  uint64_t *& out, uint8_t masking)
 {
 
     __mmask8 mask = masking;
-   // //cout<< "mask: "<<mask;
+    // //cout<< "mask: "<<mask;
 
     //define input AVX register and result AVX register
     __m512i t2;
@@ -80,27 +84,22 @@ int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
 
     t2= _mm512_load_epi64(input);
 
+    __m512i r1 = _mm512_maskz_compress_epi64(mask,t2);
 
-    _mm512_mask_compressstoreu_epi64( out, mask, t2 );
+    uint64_t *rt = (uint64_t*) &r1;
 
-
-    int count = __builtin_popcount(mask);
-    //write back the compress data into the result vector
-
-   // //cout<<"popcount: "<<count<<endl;
-  //  //cout<<"compress results: "<<endl;
-    for(int i =0;i<count;i++){
-        uint64_t * tmp = (uint64_t*) &out;
-      //  //cout<< out[i]<<" "<<endl;
-        //    resultv.push_back(in[i]);
-
+    cout<<"COMPRESS TEST: "<<endl;
+    for(int i=0;i<8;i++)
+    {
+        out[i]=rt[i];
+        cout<<out[i]<< " ";
     }
-   // //cout<< "OUT OLD: "<<out<<endl;
 
-    out += __builtin_popcount(mask);
-   // //cout<< "OUT NEW: "<<out<<endl;
 
-    return count;
+
+
+
+    return __builtin_popcount(mask);
 
 }
 /***
@@ -114,26 +113,32 @@ int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
 int  Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int size)
 {
     int count = 0;
-
+    uint64_t [8][32] mpin;
+    //ablauf schleife mit: array füllen mit compressdaten.
+    //compressarray mithilfe von masks nacheinander kopieren
+    //sortieren notwendig
 
 //#pragma omp parallel num_threads(1)
-    //{
-   //
+    // {
+    //
 //#pragma  omp for ordered schedule(dynamic)
-        for (int i = 0; i < size; i++) {
-            if (__builtin_popcount(masking[i]) == 0) {
-                input += 8;
-                continue;
-            }
-           // int thread_num = omp_get_thread_num();
-           // int cpu_num = sched_getcpu();
-           // printf("Thread %3d is running on CPU %3d\n", thread_num, cpu_num);
-//#pragma omp ordered
-            count += Parent::compressV(input, out, masking[i]);
-//#pragma omp ordered
+    for (int i = 0; i < size; i++) {
+        if (__builtin_popcount(masking[i]) == 0) {
             input += 8;
+            continue;
+        }
 
-       // }
+
+
+
+
+
+
+       Parent::compressV(input, out, masking[i]);
+//#pragma omp ordered
+        input += 8;
+
+        // }
     }
     return count;
 
@@ -162,7 +167,7 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
     //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
     sw.start();
     alignas(64) uint64_t selhits[datasize];
-   memcpy( selhits, res, datasize*sizeof(uint64_t));
+    memcpy( selhits, res, datasize*sizeof(uint64_t));
 
 
     uint64_t* result= (uint64_t *) aligned_alloc(64,datasize*sizeof(uint64_t *));   //buffer of compress results
@@ -174,7 +179,7 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
     for(int i=0;i<datasize/8;i++)
     {
         masks[i]=Parent::createMask(&selhits[i*8]);
-       // cout<<"mask: "<<(unsigned int) masks[i]<<endl;
+        //cout<<"mask: "<<(unsigned int) masks[i]<<endl;
     }
 
     //set startpointer to check result and cpy back to VE
@@ -191,10 +196,10 @@ uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
 
 
     //cout<< "[VH] result: "<<endl;
-   // for(int i=0; i<count;i++){
-       // cout<<startpointer[i]<<" ";
+    for(int i=0; i<count;i++){
+        //cout<<startpointer[i]<<" ";
 
-   // }
+    }
     //cout<<endl;
 
     memcpy( res, startpointer, datasize*sizeof(uint64_t)); //copy back result to result input buffer
