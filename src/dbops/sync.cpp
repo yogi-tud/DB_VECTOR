@@ -26,15 +26,14 @@ int main() {
 //it depends on the size if the calculation gets vectorized
 //set the size of the input data, randomly generated
 //autovectorize up to 131072 elements, which equals 4096kb of memory
-    int datasize = 256;
+    size_t datasize = 134217728;
     std::cout<<"[VE] DATASIZE: "<<datasize<<std::endl;
     sw.start();
 
 
 
-
-     uint64_t data[datasize];
-     uint64_t result[datasize];
+     uint64_t* data =intel_malloc< uint64_t >( datasize );
+     uint64_t * result=intel_malloc< uint64_t >( datasize );
 
     for( uint64_t i = 0; i < datasize; ++i ) {
         data[ i ]= rand() %10000;
@@ -44,9 +43,6 @@ int main() {
     double d_rand = sw.duration();
 
     sw.reset();
-
-//generate random input data
-//int * data = createIntArrayRandomNumbers(datasize );
 
 
 
@@ -68,10 +64,6 @@ int main() {
 
 
 
-
-//pointer to array element i * 256   inner loop should process only 256 elements, starting at i * 256
-//d2 = &data[i*256];
-//r2 = &result[i*256];
 
 
 
@@ -124,6 +116,7 @@ int main() {
     vhcall_args_set_veoshandle(ca, 0);  //set veos handle as argument
     vhcall_args_set_pointer(ca,  VHCALL_INTENT_IN, 1, (uint64_t *)data, size);  //set Select input data as function argument
     vhcall_args_set_pointer(ca,  VHCALL_INTENT_INOUT, 2, (uint64_t *)result, size); //set select result data as function argument
+    vhcall_args_set_u64 (ca, 3, datasize);
 
 
 
@@ -132,14 +125,15 @@ int main() {
     double d_vhcall = sw.duration();
     std::cout<<"[VE] Time for doing compress:  "<<d_vhcall<<std::endl;
 
-    std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
+   std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
     std::cout<<"[VE] RETURNED COMRPESS DATA: "<<std::endl;
-    for(int i=0;i<retval;i++){
+   // for(int i=0;i<retval;i++){
 
-      //  std::cout<<result[i]<<" ";
-    }
-    std::cout<<std::endl;
+    //   std::cout<<result[i]<<" ";
+  //  }
+   // std::cout<<std::endl;
     vhcall_args_free(ca);
+
 
 
     return 0;

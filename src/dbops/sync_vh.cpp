@@ -11,7 +11,6 @@
 #include <array>
 #include "libvepseudo.h"
 #include <sched.h>
-#include <omp.h>
 #include "stopwatch.h"
 
 
@@ -32,7 +31,7 @@ __mmask8 Parent::createMask(uint64_t* maskin)
 {
 
 
-    uint64_t* maskstatic= (uint64_t *) aligned_alloc(64,8*sizeof(uint64_t *));
+    alignas(8) uint64_t maskstatic[8];
 
     for(int i=0;i<8;i++)
     {
@@ -42,8 +41,12 @@ __mmask8 Parent::createMask(uint64_t* maskin)
 
     __m512i m1,m2;
 
+    alignas(8) uint64_t hits[8];
+    memcpy( hits, maskin, 8*sizeof(uint64_t));
 
-    m1= _mm512_load_epi64(maskin);
+
+    m1= _mm512_load_epi64(hits);
+
     m2= _mm512_load_epi64(maskstatic);
 
 
@@ -75,10 +78,12 @@ int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
     __m512i t2;
 
     //copy input data into AVX data object with offset
-    uint64_t* ain = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
-    memcpy( ain, input, 8*sizeof(uint64_t));
+    alignas(8) uint64_t ainput[8];
+    memcpy( ainput, input, 8*sizeof(uint64_t));
 
-    t2= _mm512_load_epi64(input);
+
+
+    t2= _mm512_load_epi64(ainput);
 
 
     _mm512_mask_compressstoreu_epi64( out, mask, t2 );
@@ -99,6 +104,8 @@ int  Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking)
 
     out += __builtin_popcount(mask);
    // //cout<< "OUT NEW: "<<out<<endl;
+
+
 
     return count;
 
@@ -148,59 +155,66 @@ extern "C" {
  * @return total popcount of compress
  */
 
-uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
+uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res,  uint64_t datasize)
 {
+    cerr<<"[VH] DATASIZE: "<<datasize<<endl;
 
     Parent p;
     WallClockStopWatch sw;
-    int datasize =256;
+    //int datasize =256;
 
+    cerr<<"[VH] DATASIZE: "<<datasize<<endl;
 
 
     //cout<<endl;
 
     //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
     sw.start();
-    alignas(64) uint64_t selhits[datasize];
-   memcpy( selhits, res, datasize*sizeof(uint64_t));
+   // alignas(8) uint64_t selhits[datasize];
+  // memcpy( selhits, res, datasize*sizeof(uint64_t));
+    //cout<<"[VH] MEMCPY SELECT RESULTS DONE"<<endl;
+
+    uint64_t* result= (uint64_t *) aligned_alloc(8,datasize*sizeof(uint64_t ));   //buffer of compress results
+   // cout<< "[VH] RESULT DATA ALLOCATED"<<endl;
 
 
-    uint64_t* result= (uint64_t *) aligned_alloc(64,datasize*sizeof(uint64_t *));   //buffer of compress results
 
+   // alignas(8) uint64_t ain[datasize];
+   // memcpy( ain, in, datasize*sizeof(uint64_t));
+    //cout<<"[VH] MEMCPY INPUT DONE"<<endl;
 
+    cerr<< "[VH] BEFORE MASKS"<<endl;
 
     uint8_t masks[datasize/8]= {0};
     //calculate masks for avx instructions from input (selection hits)
     for(int i=0;i<datasize/8;i++)
     {
-        masks[i]=Parent::createMask(&selhits[i*8]);
+        masks[i]=Parent::createMask(&res[i*8]);
        // cout<<"mask: "<<(unsigned int) masks[i]<<endl;
     }
+    cerr<<"[VH] MASKS GENERATED"<<endl;
 
-    //set startpointer to check result and cpy back to VE
+
     uint64_t* startpointer = result;
-    alignas(64) uint64_t ain[datasize];
-    memcpy( ain, in, datasize*sizeof(uint64_t));
 
-    //cout<<"align of ainput in OUTSIDE: "<<alignof((ain))<<endl;
-    //cout<<"align of input in OUTSIDE: "<<alignof((in))<<endl;
-    //cout<<"align of res in OUTSIDE: "<<alignof((res))<<endl;
-
-    int count= Parent::compressAll(ain,result, masks, datasize/8);  //Do compress on all input
+    int count= Parent::compressAll(in,result, masks, datasize/8);  //Do compress on all input
 
 
 
     //cout<< "[VH] result: "<<endl;
    // for(int i=0; i<count;i++){
-       // cout<<startpointer[i]<<" ";
+   //    cout<<startpointer[i]<<" ";
 
    // }
-    //cout<<endl;
-
+    cout<<endl;
+    cerr<<"[VH] vormem: "<<datasize<<endl;
     memcpy( res, startpointer, datasize*sizeof(uint64_t)); //copy back result to result input buffer
+    cerr<<"[VH] nachmem: "<<datasize<<endl;
+    free(result);
+   // cout<<"[VH] MEMCPY COMPRESS RESULTS DONE"<<endl;
     sw.stop();
     double d_mcpy = sw.duration();
-    cout<<"[VH] duration total compress: "<<d_mcpy<<endl;
+
 
     return (uint64_t) count;  //return number of compressed values in result buffer
 
