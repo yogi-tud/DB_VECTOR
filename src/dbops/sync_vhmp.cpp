@@ -1,8 +1,4 @@
 //
-// Created by johannes on 18.07.19.
-//
-
-//
 // Created by johannes on 28.06.19.
 //
 
@@ -15,7 +11,6 @@
 #include <array>
 #include "libvepseudo.h"
 #include <sched.h>
-#include <omp.h>
 #include "stopwatch.h"
 
 
@@ -26,35 +21,21 @@ public:
     void showMessage(const char* message);
     static int compressV(uint64_t *input, uint64_t *&out, uint8_t masking);
     static int compressAll(uint64_t *input, uint64_t *&out, uint8_t * masking, int size);
-    static __mmask8 createMask(uint64_t* maskin);
+    static __mmask8 createMask(uint64_t  * maskin);
 
 
 
 };
-
-__mmask8 Parent::createMask(uint64_t* maskin)
-{
-
-
-    uint64_t* maskstatic= (uint64_t *) aligned_alloc(64,8*sizeof(uint64_t *));
-
-    for(int i=0;i<8;i++)
-    {
-        maskstatic[i]=1;
-
-    }
-
-    __m512i m1,m2;
+inline __attribute__((always_inline)) __mmask8 Parent::createMask(
+        uint64_t * maskin ) {
 
 
-    m1= _mm512_load_epi64(maskin);
-    m2= _mm512_load_epi64(maskstatic);
+
+    return _mm512_cmpeq_epi64_mask( _mm512_load_epi64( maskin ),
+                                    _mm512_set1_epi64( 1 ) );
 
 
-    __mmask8 masktest = _mm512_cmp_epi64_mask (m1,m2, _MM_CMPINT_EQ);
 
-
-    return masktest;
 }
 
 void Parent::showMessage(const char* message)
@@ -68,39 +49,23 @@ void Parent::showMessage(const char* message)
  * @param out pointer to write result of compress back to
  * @param masking a mask with 8 bits
  * @return popcount of a single compress run
+ *
  */
-int   Parent::compressV(uint64_t *input,  uint64_t *& out, uint8_t masking)
-{
 
-    __mmask8 mask = masking;
-    // //cout<< "mask: "<<mask;
-
-    //define input AVX register and result AVX register
-    __m512i t2;
-
-    //copy input data into AVX data object with offset
-    uint64_t* ain = (uint64_t *) aligned_alloc(256,256*sizeof(uint64_t *));
-    memcpy( ain, input, 8*sizeof(uint64_t));
-
-    t2= _mm512_load_epi64(input);
-
-    __m512i r1 = _mm512_maskz_compress_epi64(mask,t2);
-
-    uint64_t *rt = (uint64_t*) &r1;
-
-    cout<<"COMPRESS TEST: "<<endl;
-    for(int i=0;i<8;i++)
-    {
-        out[i]=rt[i];
-        cout<<out[i]<< " ";
-    }
+inline __attribute__((always_inline)) int Parent::compressV(uint64_t *input, uint64_t *&out, uint8_t masking) {
 
 
+    //uint64_t * ain = (uint64_t *) aligned_alloc(64,8*sizeof(uint64_t));
+    //memcpy(ain,input,64);
 
+    _mm512_mask_compressstoreu_epi64( out, (__mmask8) masking, _mm512_loadu_si512(input) );
+    int count = _mm_popcnt_u32( masking); //  oder
 
+    out += count;
 
-    return __builtin_popcount(mask);
+    //  free(ain);
 
+    return count;
 }
 /***
  * @brief this function performs size times runs of avx compress and counts the total number of result values
@@ -113,28 +78,23 @@ int   Parent::compressV(uint64_t *input,  uint64_t *& out, uint8_t masking)
 int  Parent::compressAll(uint64_t *input, uint64_t *&out, uint8_t* masking, int size)
 {
     int count = 0;
-    uint64_t [8][32] mpin;
-    //ablauf schleife mit: array füllen mit compressdaten.
-    //compressarray mithilfe von masks nacheinander kopieren
-    //sortieren notwendig
+
 
 //#pragma omp parallel num_threads(1)
-    // {
+    //{
     //
 //#pragma  omp for ordered schedule(dynamic)
     for (int i = 0; i < size; i++) {
-        if (__builtin_popcount(masking[i]) == 0) {
+        if (masking[i] == 0 ) {
             input += 8;
             continue;
         }
+        // int thread_num = omp_get_thread_num();
+        // int cpu_num = sched_getcpu();
+        // printf("Thread %3d is running on CPU %3d\n", thread_num, cpu_num);
+//#pragma omp ordered
 
-
-
-
-
-
-
-       Parent::compressV(input, out, masking[i]);
+        count += Parent::compressV(input, out, masking[i]);
 //#pragma omp ordered
         input += 8;
 
@@ -153,63 +113,116 @@ extern "C" {
  * @return total popcount of compress
  */
 
-uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res)
+
+
+
+uint64_t compress(veos_handle *handle, uint64_t * in, uint64_t * res,  uint64_t datasize)
 {
 
-    Parent p;
-    WallClockStopWatch sw;
-    int datasize =256;
 
 
 
-    //cout<<endl;
-
-    //input buffer of selection hits must be copied to properly aligned memory, due to AVX being picky about alignment
-    sw.start();
-    alignas(64) uint64_t selhits[datasize];
-    memcpy( selhits, res, datasize*sizeof(uint64_t));
-
-
-    uint64_t* result= (uint64_t *) aligned_alloc(64,datasize*sizeof(uint64_t *));   //buffer of compress results
 
 
 
-    uint8_t masks[datasize/8]= {0};
-    //calculate masks for avx instructions from input (selection hits)
-    for(int i=0;i<datasize/8;i++)
-    {
-        masks[i]=Parent::createMask(&selhits[i*8]);
-        //cout<<"mask: "<<(unsigned int) masks[i]<<endl;
+    uint64_t *result = (uint64_t *) aligned_alloc(8, datasize * sizeof(uint64_t));   //buffer of compress results
+    uint64_t *startpointer = result;
+    int count=0;
+
+    uint8_t * masks = (uint8_t *) aligned_alloc(8, datasize / 8);
+
+    for (int i = 0; i < datasize / 8; i++) {
+        masks[i] = Parent::createMask(&res[i * 8]);
+
+
     }
+    //cerr << "[VH] MASKS GENERATED" << endl;
 
-    //set startpointer to check result and cpy back to VE
-    uint64_t* startpointer = result;
-    alignas(64) uint64_t ain[datasize];
-    memcpy( ain, in, datasize*sizeof(uint64_t));
 
-    //cout<<"align of ainput in OUTSIDE: "<<alignof((ain))<<endl;
-    //cout<<"align of input in OUTSIDE: "<<alignof((in))<<endl;
-    //cout<<"align of res in OUTSIDE: "<<alignof((res))<<endl;
 
-    int count= Parent::compressAll(ain,result, masks, datasize/8);  //Do compress on all input
+    count = Parent::compressAll(in, result, masks, datasize / 8);  //Do compress on all input
 
 
 
     //cout<< "[VH] result: "<<endl;
-    for(int i=0; i<count;i++){
-        //cout<<startpointer[i]<<" ";
+    // for(int i=0; i<count;i++){
+    //    cout<<startpointer[i]<<" ";
 
-    }
-    //cout<<endl;
+    // }
+    //cout << endl;
 
-    memcpy( res, startpointer, datasize*sizeof(uint64_t)); //copy back result to result input buffer
-    sw.stop();
-    double d_mcpy = sw.duration();
-    cout<<"[VH] duration total compress: "<<d_mcpy<<endl;
+    memcpy(res, startpointer, datasize * sizeof(uint64_t)); //copy back result to result input buffer
+
+    // free(result);
+    // cout<<"[VH] MEMCPY COMPRESS RESULTS DONE"<<endl;
+
+
+    delete (startpointer);
+
+
+
 
     return (uint64_t) count;  //return number of compressed values in result buffer
 
 
 }
 
+}
+
+int main () {
+    WallClockStopWatch sw;
+    sw.start();
+    uint32_t lower = 5000;
+    uint32_t upper = 10000;
+    size_t datasize = 256;
+
+    uint64_t *data = (uint64_t *) aligned_alloc(64, datasize * sizeof(uint64_t));
+    uint64_t *result = (uint64_t *) aligned_alloc(64, datasize * sizeof(uint64_t));
+
+    //generate random data
+
+    for (uint64_t i = 0; i < datasize; ++i) {
+        data[i] = rand() % 10000;
+
+    }
+
+    sw.stop();
+    double d_rand = sw.duration();
+
+    sw.reset();
+
+
+//Selection calculation
+
+//set up constants
+
+
+
+    sw.start();
+
+    for( uint64_t i = 0; i < datasize; ++i ) {
+        result[ i] = ( data[ i ] < upper ) & ( data[ i ] > lower ) ;
+    }
+
+
+
+    int hits=0;
+
+
+    for(int f=0;f<datasize;f++)
+    {
+        if(result[f]){
+            hits++;
+        }
+
+    }
+    float phit = (float)hits / (float)datasize;
+    sw.stop();
+    double d_sel = sw.duration();
+
+    cout<<"DONE"<<endl;
+
+
+
+    return 0;
 }

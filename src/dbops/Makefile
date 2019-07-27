@@ -43,10 +43,14 @@ vh:	vh.c
 		@echo vh main created
 
 sync:	sync.cpp
-		g++ sync_vh.cpp -o sync_vh.so -O2 -fpic -shared -std=c++11 -mavx512cd -mavx512f -mavx512vl -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64
+		g++ sync_vh.cpp -o sync_vh.so -O2 -fpic -shared -std=c++11 -mavx -mavx512cd -mavx512f -mavx512vl -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64
 		@echo vh lib compiled
 		nc++ sync.cpp -o sync -O2
 		@echo ve exe compiled
+mp:     sync_vhmp.cpp
+        g++ sync_vh.cpp -o mp -O2 -fpic -std=c++11 -mavx -mavx512cd -mavx512f -mavx512vl -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64
+cmp:    cmp.cpp
+		g++ cmp.cpp -o cmp  -g -fpic -std=c++11 -mavx512cd -mavx512f -mavx512vl -I/opt/nec/ve/veos/include -L/opt/nec/ve/veos/lib64
 
 clean:
 	$(RM) *.o *~ $(MAIN)

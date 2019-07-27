@@ -26,14 +26,16 @@ int main() {
 //it depends on the size if the calculation gets vectorized
 //set the size of the input data, randomly generated
 //autovectorize up to 131072 elements, which equals 4096kb of memory
-    size_t datasize = 134217728;
-    std::cout<<"[VE] DATASIZE: "<<datasize<<std::endl;
+    size_t datasize =   256;
+    //std::cout<<"[VE] DATASIZE: "<<datasize<<std::endl;
     sw.start();
 
 
 
-     uint64_t* data =intel_malloc< uint64_t >( datasize );
+     uint64_t* data = (uint64_t *) aligned_alloc(64,datasize*sizeof(uint64_t));
      uint64_t * result=intel_malloc< uint64_t >( datasize );
+
+
 
     for( uint64_t i = 0; i < datasize; ++i ) {
         data[ i ]= rand() %10000;
@@ -69,7 +71,7 @@ int main() {
 
     sw.start();
 #pragma _NEC nofuse
-    for( uint32_t i = 0; i < datasize; ++i ) {
+    for( uint64_t i = 0; i < datasize; ++i ) {
         result[ i] = ( data[ i ] < upper ) & ( data[ i ] > lower ) ;
     }
 
@@ -109,6 +111,15 @@ int main() {
     size_t size=datasize*sizeof(uint64_t);
 
 
+
+
+
+
+
+
+
+
+
     handle = vhcall_install("./sync_vh.so");    //load shared lib
     symid  = vhcall_find(handle, "compress");   //load compress function
 
@@ -125,17 +136,19 @@ int main() {
     double d_vhcall = sw.duration();
     std::cout<<"[VE] Time for doing compress:  "<<d_vhcall<<std::endl;
 
-   std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
+   //std::cout<<"[VE] RETURNED COMRPESS COUNT: "<<retval<<std::endl;
     std::cout<<"[VE] RETURNED COMRPESS DATA: "<<std::endl;
-   // for(int i=0;i<retval;i++){
+    for(int i=0;i<10;i++){
 
-    //   std::cout<<result[i]<<" ";
-  //  }
-   // std::cout<<std::endl;
+       std::cout<<result[i]<<" ";
+    }
+   std::cout<<std::endl;
+
+    //
+
+
+
     vhcall_args_free(ca);
-
-
-
     return 0;
 }
 
