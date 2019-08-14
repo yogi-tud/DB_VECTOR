@@ -19,6 +19,10 @@ extern vhcall_args* vhcall_args_alloc(void);
 
 
 int main() {
+
+
+    size_t datasize =   1048576;
+    std::cout<<"[VE] datacount: "<<datasize<<"\n";
     WallClockStopWatch sw;
 
 
@@ -26,7 +30,7 @@ int main() {
 //it depends on the size if the calculation gets vectorized
 //set the size of the input data, randomly generated
 //autovectorize up to 131072 elements, which equals 4096kb of memory
-    size_t datasize =   256;
+
     //std::cout<<"[VE] DATASIZE: "<<datasize<<std::endl;
     sw.start();
 
